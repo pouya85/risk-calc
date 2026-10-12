@@ -1,7 +1,7 @@
 {
   "name": "ماشین‌حساب ریسک",
   "short_name": "ریسک",
-  "description": "محاسبهٔ لات، R:R و فاصله تا حد ضرر برای اکانت‌های FundedNext",
+  "description": "ابزار ترید: ماشین‌حساب ریسک و تایمر Killzone",
   "lang": "fa",
   "dir": "rtl",
   "start_url": "./",

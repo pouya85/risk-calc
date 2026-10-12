@@ -3,10 +3,10 @@
 const STORE_KEY = 'riskcalc.v1';
 
 const DEFAULT_ACCOUNTS = [
-  { name: 'FN 2-Phase #1', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'FN 2-Phase #2', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'FN 1-Phase #1', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'FN 1-Phase #2', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: 'اکانت ۱', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: 'اکانت ۲', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: 'اکانت ۳', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: 'اکانت ۴', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
   { name: 'دمو',           size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: false },
 ];
 
@@ -72,17 +72,20 @@ function compute() {
   const ps = pipSize(pair);
   const out = { warnings: [], valid: false };
 
-  if (!(entry > 0) || !(sl > 0) || entry === sl) return out;
+  // گرد به ۰٫۱ پیپ (یک پیپت): 1.16240−1.16200 در float می‌شود 4.0000000004 و لات 24.99 درمی‌آمد
+  const pips = d => Math.round(Math.abs(d) / ps * 10) / 10;
+
+  if (!(entry > 0) || !(sl > 0) || pips(entry - sl) === 0) return out;
 
   out.valid = true;
   out.dir = sl < entry ? 'LONG' : 'SHORT';
-  out.slPips = Math.abs(entry - sl) / ps;
+  out.slPips = pips(entry - sl);
   out.pv = pipValuePerLot(pair, entry);
 
   if (tp > 0) {
     const rightSide = out.dir === 'LONG' ? tp > entry : tp < entry;
     if (rightSide) {
-      out.tpPips = Math.abs(tp - entry) / ps;
+      out.tpPips = pips(tp - entry);
       out.rr = out.tpPips / out.slPips;
     } else {
       out.warnings.push(['bad', 'TP در سمت اشتباهِ Entry است — جهت معامله را چک کن']);

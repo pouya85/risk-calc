@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ماشین‌حساب ریسک</title>
-<meta name="description" content="محاسبهٔ لات، R:R و فاصله تا حد ضرر برای اکانت‌های FundedNext">
+<meta name="description" content="ابزار ترید: ماشین‌حساب ریسک و تایمر Killzone">
 <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,13 +14,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/Vazirmatn-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <main class="wrap">
+<div id="view-risk" class="view">
 
   <header class="top">
     <h1>ماشین‌حساب ریسک</h1>
@@ -109,7 +108,52 @@
   <footer class="foot">
     لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · Daily Loss و Max DD ثابت روی سایز اولیه
   </footer>
+</div>
+
+<!-- ================= Killzone ================= -->
+<div id="view-kz" class="view" hidden>
+  <header class="top">
+    <h1>تایمر Killzone</h1>
+  </header>
+
+  <section class="card clock">
+    <div class="clockTime" id="kzClock">--:--:--</div>
+    <div class="clockSub" id="kzTz">London</div>
+  </section>
+
+  <section class="card status" id="kzStatus">
+    <div class="statusLine" id="kzState">—</div>
+    <div class="countdown" id="kzCountdown">--:--:--</div>
+    <div class="statusSub" id="kzSub"></div>
+    <div class="bar" id="kzBarWrap" hidden><div class="barFill" id="kzBar"></div></div>
+  </section>
+
+  <ul id="kzAlerts" class="warnings"></ul>
+
+  <section class="card">
+    <h2>امروز <span class="hint" id="kzDate"></span></h2>
+    <div class="timeline" id="kzTimeline"></div>
+    <div class="ticks"><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span></div>
+    <ul class="sessions" id="kzList"></ul>
+  </section>
+
+  <section class="card notes">
+    <h2>نکته‌های ساعت</h2>
+    <ul>
+      <li>جهش اول <b>07:00</b> (باز شدن فرانکفورت)</li>
+      <li><b>10:15–11:30</b> مرده است</li>
+      <li>پرحرکت‌ترین ربع‌ساعت‌ها: <b>15:45</b>، <b>13:30</b>، <b>15:00</b></li>
+      <li>بعد از <b>16:45</b> حرکت می‌خوابد</li>
+    </ul>
+    <p class="hint">همهٔ ساعت‌ها به وقت لندن. London روی ساعت لندن و NY AM روی ساعت نیویورک (08:30 داده‌های آمریکا) حساب می‌شود، پس هفته‌هایی که تغییر ساعت تابستانی دو کشور هم‌زمان نیست خودکار درست است.</p>
+  </section>
+</div>
 </main>
+
+<nav class="tabs" role="tablist">
+  <button type="button" role="tab" data-view="risk" class="active"><span class="ico">⚖︎</span>ریسک</button>
+  <button type="button" role="tab" data-view="kz"><span class="ico">⏱︎</span>Killzone</button>
+</nav>
 
 <template id="accTpl">
   <div class="acc">
@@ -130,5 +174,6 @@
 </template>
 
 <script src="app.js"></script>
+<script src="killzone.js"></script>
 </body>
 </html>
