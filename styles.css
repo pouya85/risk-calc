@@ -97,6 +97,12 @@ button {
 }
 button:active { transform: scale(.98); }
 button.ghost { background: transparent; width: 100%; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; }
+@media (prefers-color-scheme: dark) { button.primary { color: #0f1115; } }
+
+/* placeholder باید واضحاً «خالی» به نظر برسد، نه شبیه عدد واردشده */
+input::placeholder { color: var(--muted); opacity: .55; font-size: 15px; font-weight: 400; letter-spacing: 0; }
+input.price::placeholder { text-align: right; direction: rtl; }
 button.danger { color: var(--bad); }
 
 /* خلاصه */

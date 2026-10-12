@@ -237,6 +237,15 @@ $('clearTrade').addEventListener('click', () => {
   $('entry').focus();
 });
 
+// محاسبه با هر تایپ زنده انجام می‌شود؛ این دکمه کیبورد را می‌بندد و به نتیجه می‌برد
+$('calc').addEventListener('click', () => {
+  const empty = ['entry', 'sl'].find(id => !(num(state[id]) > 0));
+  if (empty) { $(empty).focus(); return; }
+  document.activeElement?.blur();
+  render();
+  $('stats').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
 $('tradesPlus').addEventListener('click', () => { state.tradesToday = Math.min(9, state.tradesToday + 1); save(); render(); });
 $('tradesMinus').addEventListener('click', () => { state.tradesToday = Math.max(0, state.tradesToday - 1); save(); render(); });
 $('stopHit').addEventListener('change', e => { state.stopHit = e.target.checked; save(); render(); });

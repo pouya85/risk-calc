@@ -47,17 +47,20 @@
     </div>
 
     <label>Entry
-      <input id="entry" class="price" inputmode="decimal" placeholder="1.08500" autocomplete="off">
+      <input id="entry" class="price" inputmode="decimal" placeholder="قیمت ورود" autocomplete="off">
     </label>
     <div class="row2">
       <label>Stop Loss
-        <input id="sl" class="price" inputmode="decimal" placeholder="1.08470" autocomplete="off">
+        <input id="sl" class="price" inputmode="decimal" placeholder="قیمت استاپ" autocomplete="off">
       </label>
       <label>Take Profit
-        <input id="tp" class="price" inputmode="decimal" placeholder="1.08560" autocomplete="off">
+        <input id="tp" class="price" inputmode="decimal" placeholder="قیمت تارگت" autocomplete="off">
       </label>
     </div>
-    <button id="clearTrade" class="ghost" type="button">پاک کردن</button>
+    <div class="row2">
+      <button id="clearTrade" class="ghost" type="button">پاک کردن</button>
+      <button id="calc" class="primary" type="button">محاسبه</button>
+    </div>
   </section>
 
   <!-- خلاصه -->
@@ -119,9 +122,9 @@
       <label>سایز اولیه<input data-f="size" inputmode="decimal"></label>
       <label>موجودی فعلی<input data-f="balance" inputmode="decimal"></label>
       <label>P&amp;L امروز<input data-f="todayPnl" inputmode="decimal" placeholder="-250"></label>
-      <label>ریسک %<input data-f="riskPct" inputmode="decimal"></label>
-      <label>Daily Loss %<input data-f="dailyPct" inputmode="decimal"></label>
-      <label>Max DD %<input data-f="maxDdPct" inputmode="decimal"></label>
+      <label>ریسک ٪<input data-f="riskPct" inputmode="decimal"></label>
+      <label>ضرر روزانه ٪<input data-f="dailyPct" inputmode="decimal"></label>
+      <label>حداکثر افت ٪<input data-f="maxDdPct" inputmode="decimal"></label>
     </div>
   </div>
 </template>
