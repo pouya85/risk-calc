@@ -16,8 +16,17 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="preload" href="fonts/Vazirmatn-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
+<!-- قبل از نمایش محتوا قفل را اعمال کن تا یک لحظه هم دیده نشود -->
+<script>try { if (localStorage.getItem('riskcalc.lock')) document.documentElement.classList.add('locked'); } catch (e) {}</script>
 </head>
 <body>
+<div id="lockScreen" class="lockScreen" hidden>
+  <div class="lockIcon">🔒</div>
+  <div class="lockTitle">ابزار ترید</div>
+  <button id="unlockBtn" class="primary big" type="button">باز کردن با Face ID</button>
+  <p id="lockMsg" class="hint"></p>
+  <button id="relockBtn" class="ghost" type="button" hidden>Face ID کار نمی‌کند؟ قفل را دوباره بساز</button>
+</div>
 <main class="wrap">
 <div id="view-risk" class="view">
 
@@ -107,6 +116,12 @@
       <button id="resetAcc" class="ghost danger" type="button">بازگشت به پیش‌فرض</button>
     </div>
   </details>
+
+  <section class="card">
+    <h2>قفل Face ID</h2>
+    <p class="hint" id="lockInfo"></p>
+    <label class="switch"><input type="checkbox" id="lockToggle"><span>فعال</span></label>
+  </section>
 
   <footer class="foot">
     لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · Daily Loss و Max DD ثابت روی سایز اولیه
@@ -247,5 +262,6 @@
 <script src="app.js"></script>
 <script src="killzone.js"></script>
 <script src="journal.js"></script>
+<script src="lock.js"></script>
 </body>
 </html>
