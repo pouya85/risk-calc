@@ -68,14 +68,15 @@ function pipValuePerLot(pair, price) {
 }
 
 // کمیسیون رفت‌وبرگشت هر لات به دلار، از مشخصات نماد در FundedNext (MT5)
-// XAUUSD: 0.0016% ارزش قرارداد (100oz × قیمت) در هر deal، یعنی باز + بسته = ۲ بار
+// هر deal یک بار کمیسیون دارد، یعنی باز + بسته = ۲ بار
+// XAUUSD: 0.0016% ارزش قرارداد (100oz × قیمت) · فارکس: 5 USD per lot
 function commissionPerLot(pair, price) {
   if (isGold(pair)) return 2 * 0.000016 * 100 * price;
-  return 0; // جفت‌ارزها: هنوز مشخصات FundedNext را نداریم
+  return 2 * 5;
 }
 
 // حداکثر حجم هر سفارش در FundedNext
-const MAX_VOLUME = { XAUUSD: 50 };
+const maxVolume = pair => isGold(pair) ? 50 : 40;
 
 const $ = id => document.getElementById(id);
 const usd = v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -152,11 +153,14 @@ function compute(inp = state) {
     if (r.dailyAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Daily Loss رد می‌شود`]);
     else if (r.ddAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Max Drawdown رد می‌شود`]);
     if (r.lot <= 0) out.warnings.push(['warn', `${n}: لات کمتر از 0.01 می‌شود`]);
-    const maxVol = MAX_VOLUME[pair];
-    if (maxVol && r.lot > maxVol) out.warnings.push(['warn', `${n}: لات بیشتر از حداکثر هر سفارش (${maxVol}) — در ${Math.ceil(r.lot / maxVol)} سفارش باز کن`]);
+    const maxVol = maxVolume(pair);
+    if (r.lot > maxVol) out.warnings.push(['warn', `${n}: لات بیشتر از حداکثر هر سفارش (${maxVol}) — در ${Math.ceil(r.lot / maxVol)} سفارش باز کن`]);
   }
-  if (out.comm > 0)
-    out.warnings.push(['info', `ریسک و سود شامل کمیسیون رفت‌وبرگشت است: ~$${out.comm.toFixed(2)} در هر لات`]);
+  if (out.comm > 0) {
+    out.netRr = out.tpPips ? (out.tpPips * out.pv - out.comm) / (out.slPips * out.pv + out.comm) : undefined;
+    out.warnings.push(['info', `ریسک و سود شامل کمیسیون رفت‌وبرگشت است: ~$${out.comm.toFixed(2)} در هر لات`
+      + (out.netRr !== undefined ? ` · R:R خالص بعد از کمیسیون: 1:${out.netRr.toFixed(2)}` : '')]);
+  }
   return out;
 }
 
