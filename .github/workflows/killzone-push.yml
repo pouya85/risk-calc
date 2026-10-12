@@ -1,0 +1,33 @@
+name: Killzone push
+
+on:
+  schedule:
+    # UTC. اسکریپت خودش تا ۵ دقیقه قبل از شروع صبر می‌کند (BST و GMT هر دو پوشش داده می‌شوند)
+    - cron: '47 4 * * 1-5'   # London 07:00 لندن = 06:00 یا 07:00 UTC
+    - cron: '17 11 * * 1-5'  # NY AM 08:30 نیویورک = 12:30 یا 13:30 UTC
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'test | london | ny'
+        default: 'test'
+
+concurrency:
+  group: killzone-${{ github.event.schedule || github.event.inputs.mode }}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: push
+      - run: node send.mjs
+        working-directory: push
+        env:
+          MODE: ${{ github.event.inputs.mode || (github.event.schedule == '47 4 * * 1-5' && 'london' || 'ny') }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTIONS: ${{ secrets.PUSH_SUBSCRIPTIONS }}

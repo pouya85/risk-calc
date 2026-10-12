@@ -173,9 +173,88 @@ function kzTick() {
       }).join('');
 }
 
+// ---------- نوتیفیکیشن (Web Push) ----------
+const VAPID_PUBLIC = 'BJ_ErLMi_3IORZHYJbhM1vves2060FVYwYccpzvA1-Hlj-6TiJyRTrZpoepQsCNjas_42UoOOSZ1IV5zP56jeYc';
+
+function b64urlToBytes(s) {
+  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4));
+  return Uint8Array.from(b, c => c.charCodeAt(0));
+}
+
+async function pushRender() {
+  const $p = id => document.getElementById(id);
+  const msg = $p('pushMsg');
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+
+  $p('pushOn').hidden = true;
+  $p('pushCodeBox').hidden = true;
+
+  if (!supported) {
+    msg.textContent = standalone
+      ? 'این دستگاه از نوتیفیکیشن وب پشتیبانی نمی‌کند (iOS 16.4 یا جدیدتر لازم است).'
+      : 'برای نوتیفیکیشن، اپ را از آیکون روی Home Screen باز کن، نه از Safari.';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    msg.textContent = 'اجازهٔ نوتیفیکیشن رد شده. از Settings ← Notifications ← اپ «ریسک» روشنش کن.';
+    return;
+  }
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    msg.textContent = '✅ روی این گوشی فعال است.';
+    $p('pushCode').value = JSON.stringify(sub);
+    $p('pushCodeBox').hidden = false;
+  } else {
+    msg.textContent = '';
+    $p('pushOn').hidden = false;
+  }
+}
+
+document.getElementById('pushOn').addEventListener('click', async () => {
+  const msg = document.getElementById('pushMsg');
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { pushRender(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(VAPID_PUBLIC) });
+    await pushRender();
+  } catch (e) {
+    msg.textContent = 'خطا: ' + e.message;
+  }
+});
+
+document.getElementById('pushCopy').addEventListener('click', async e => {
+  const ta = document.getElementById('pushCode');
+  try { await navigator.clipboard.writeText(ta.value); }
+  catch (_) { ta.select(); document.execCommand('copy'); }
+  e.target.textContent = '✓ کپی شد';
+  setTimeout(() => { e.target.textContent = 'کپی کد'; }, 2000);
+});
+
+document.getElementById('pushLocal').addEventListener('click', async () => {
+  const reg = await navigator.serviceWorker.ready;
+  reg.showNotification('✅ تست روی گوشی', { body: 'اجازهٔ نوتیفیکیشن درست است.', icon: 'icons/icon-192.png', tag: 'kz-local' });
+});
+
+document.getElementById('pushOff').addEventListener('click', async () => {
+  if (!confirm('نوتیفیکیشن روی این گوشی غیرفعال شود؟')) return;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) await sub.unsubscribe();
+  pushRender();
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => { if (e.data?.tab) showView(e.data.tab); });
+}
+pushRender().catch(() => {});
+
 setInterval(kzTick, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) kzTick(); });
 
 let startTab = 'risk';
 try { startTab = localStorage.getItem(TAB_KEY) || 'risk'; } catch (_) {}
+if (new URLSearchParams(location.search).get('tab') === 'kz') startTab = 'kz'; // از کلیک روی نوتیفیکیشن
 showView(startTab === 'kz' ? 'kz' : 'risk');

@@ -137,6 +137,22 @@
     <ul class="sessions" id="kzList"></ul>
   </section>
 
+  <section class="card" id="pushCard">
+    <h2>نوتیفیکیشن</h2>
+    <p class="hint" id="pushInfo">۵ دقیقه قبل از شروع London و NY AM (روزهای کاری)</p>
+    <div id="pushMsg" class="pushMsg"></div>
+    <button id="pushOn" class="primary" type="button" hidden>فعال کردن نوتیفیکیشن</button>
+    <div id="pushCodeBox" hidden>
+      <p class="hint">این کد را کپی کن و برای Claude بفرست تا روی سرور ثبت شود (رمز نیست، فقط آدرس گوشی برای نوتیفیکیشن است):</p>
+      <textarea id="pushCode" readonly rows="4"></textarea>
+      <div class="actions">
+        <button id="pushCopy" class="primary" type="button">کپی کد</button>
+        <button id="pushLocal" class="ghost" type="button">تست روی گوشی</button>
+      </div>
+      <button id="pushOff" class="ghost danger" type="button">غیرفعال کردن</button>
+    </div>
+  </section>
+
   <section class="card notes">
     <h2>نکته‌های ساعت</h2>
     <ul>
