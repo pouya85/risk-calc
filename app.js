@@ -7,7 +7,7 @@ const DEFAULT_ACCOUNTS = [
   { name: 'اکانت ۲', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
   { name: 'اکانت ۳', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
   { name: 'اکانت ۴', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'دمو',           size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: false },
+  { name: 'دمو',           size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: false, demo: true },
 ];
 
 const MAX_TRADES_PER_DAY = 2;
@@ -52,6 +52,8 @@ function num(v) {
   return Number(s);
 }
 
+const isDemoAccount = a => a.demo === true || /دمو|demo/i.test(a.name || '');
+
 const pipSize = pair => pair.endsWith('JPY') ? 0.01 : 0.0001;
 
 // ارزش هر پیپ برای ۱ لات استاندارد به دلار
@@ -65,10 +67,11 @@ const $ = id => document.getElementById(id);
 const usd = v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const fx = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : '—';
 
-function compute() {
-  const pair = state.pair;
-  const entry = num(state.entry), sl = num(state.sl), tp = num(state.tp);
-  const spread = num(state.spread);
+// inp پیش‌فرض همان ورودی‌های تب ریسک است؛ ژورنال با قیمت‌های خودش صدا می‌زند
+function compute(inp = state) {
+  const pair = inp.pair;
+  const entry = num(inp.entry), sl = num(inp.sl), tp = num(inp.tp);
+  const spread = num(inp.spread);
   const ps = pipSize(pair);
   const out = { warnings: [], valid: false };
 
@@ -101,7 +104,7 @@ function compute() {
   if (out.slPips > 150)
     out.warnings.push(['warn', 'SL بیشتر از ۱۵۰ پیپ — قیمت‌ها را دوباره چک کن']);
 
-  out.accounts = state.accounts.filter(a => a.enabled).map(a => {
+  out.accounts = state.accounts.map((a, idx) => [a, idx]).filter(([a]) => a.enabled).map(([a, idx]) => {
     const size = num(a.size) || 0;
     const balance = Number.isFinite(num(a.balance)) ? num(a.balance) : size;
     const todayPnl = num(a.todayPnl) || 0;
@@ -116,7 +119,7 @@ function compute() {
     const ddLeft = balance - size * (1 - (num(a.maxDdPct) || 0) / 100);
 
     return {
-      name: a.name, size, riskUsd, lot, realRisk, profit,
+      idx, name: a.name, demo: isDemoAccount(a), size, riskUsd, lot, realRisk, profit,
       profitPct: profit / size * 100,
       dailyLeft, dailyAfter: dailyLeft - realRisk,
       ddLeft, ddAfter: ddLeft - realRisk,
@@ -135,6 +138,7 @@ function compute() {
 
 function render() {
   const r = compute();
+  $('toJournal').hidden = !(r.valid && r.accounts.length);
 
   // بنر قوانین روز
   const banner = $('dayBanner');

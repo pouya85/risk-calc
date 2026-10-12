@@ -1,11 +1,12 @@
 // هر بار فایل‌ها عوض شدند، این نسخه را بالا ببر تا کش قدیمی پاک شود
-const CACHE = 'riskcalc-v6';
+const CACHE = 'riskcalc-v7';
 const SHELL = [
   './',
   'index.html',
   'styles.css',
   'app.js',
   'killzone.js',
+  'journal.js',
   'fonts/Vazirmatn-wght.woff2',
   'manifest.webmanifest',
   'icons/icon-180.png',

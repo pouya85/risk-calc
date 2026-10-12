@@ -9,6 +9,7 @@ function showView(name) {
   try { localStorage.setItem(TAB_KEY, name); } catch (_) {}
   window.scrollTo(0, 0);
   if (name === 'kz') kzTick();
+  if (name === 'journal' && typeof jRender === 'function') jRender();
 }
 
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
@@ -257,4 +258,4 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) kzTi
 let startTab = 'risk';
 try { startTab = localStorage.getItem(TAB_KEY) || 'risk'; } catch (_) {}
 if (new URLSearchParams(location.search).get('tab') === 'kz') startTab = 'kz'; // از کلیک روی نوتیفیکیشن
-showView(startTab === 'kz' ? 'kz' : 'risk');
+showView(['risk', 'kz', 'journal'].includes(startTab) ? startTab : 'risk');

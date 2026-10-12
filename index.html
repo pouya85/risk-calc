@@ -74,6 +74,7 @@
 
   <!-- نتیجه به تفکیک اکانت -->
   <section id="results" class="results"></section>
+  <button id="toJournal" class="primary big" type="button" hidden>📓 ثبت در ژورنال</button>
 
   <!-- وضعیت روز -->
   <section class="card">
@@ -164,11 +165,63 @@
     <p class="hint">همهٔ ساعت‌ها به وقت لندن. London روی ساعت لندن و NY AM روی ساعت نیویورک (08:30 داده‌های آمریکا) حساب می‌شود، پس هفته‌هایی که تغییر ساعت تابستانی دو کشور هم‌زمان نیست خودکار درست است.</p>
   </section>
 </div>
+
+<!-- ================= ژورنال ================= -->
+<div id="view-journal" class="view" hidden>
+  <header class="top">
+    <h1>ژورنال</h1>
+  </header>
+
+  <div class="seg" id="jTabs">
+    <button type="button" data-jv="list" class="active">معامله‌ها</button>
+    <button type="button" data-jv="stats">آمار</button>
+  </div>
+
+  <div id="jListView">
+    <div id="jList"></div>
+    <button id="jAdd" class="ghost" type="button">+ ثبت دستی معامله</button>
+  </div>
+
+  <div id="jStatsView" hidden>
+    <div class="seg small" id="jType">
+      <button type="button" data-v="all" class="active">همه</button>
+      <button type="button" data-v="real">چلنج</button>
+      <button type="button" data-v="demo">دمو</button>
+    </div>
+    <div class="seg small" id="jPeriod">
+      <button type="button" data-v="week">این هفته</button>
+      <button type="button" data-v="month">این ماه</button>
+      <button type="button" data-v="all" class="active">همه</button>
+    </div>
+    <div id="jStatsBody"></div>
+  </div>
+
+  <section class="card" id="backupCard">
+    <h2>پشتیبان</h2>
+    <p class="hint" id="backupInfo"></p>
+    <div class="actions">
+      <button id="expJson" class="ghost" type="button">خروجی کامل (JSON)</button>
+      <button id="expCsv" class="ghost" type="button">خروجی Excel (CSV)</button>
+    </div>
+    <button id="impJson" class="ghost" type="button" style="margin-top:8px">بازگرداندن از فایل</button>
+    <input id="impFile" type="file" accept=".json,application/json" hidden>
+  </section>
+</div>
 </main>
+
+<!-- برگهٔ جزئیات معامله -->
+<div id="sheet" class="sheet" hidden>
+  <div class="sheetBar">
+    <button id="sheetClose" type="button" class="ghost">بستن ✕</button>
+    <span id="sheetTitle"></span>
+  </div>
+  <div class="sheetBody" id="sheetBody"></div>
+</div>
 
 <nav class="tabs" role="tablist">
   <button type="button" role="tab" data-view="risk" class="active"><span class="ico">⚖︎</span>ریسک</button>
   <button type="button" role="tab" data-view="kz"><span class="ico">⏱︎</span>Killzone</button>
+  <button type="button" role="tab" data-view="journal"><span class="ico">📓</span>ژورنال</button>
 </nav>
 
 <template id="accTpl">
@@ -191,5 +244,6 @@
 
 <script src="app.js"></script>
 <script src="killzone.js"></script>
+<script src="journal.js"></script>
 </body>
 </html>
