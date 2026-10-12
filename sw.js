@@ -1,5 +1,5 @@
 // هر بار فایل‌ها عوض شدند، این نسخه را بالا ببر تا کش قدیمی پاک شود
-const CACHE = 'riskcalc-v5';
+const CACHE = 'riskcalc-v6';
 const SHELL = [
   './',
   'index.html',
@@ -14,7 +14,10 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache:'reload' تا کش ۱۰ دقیقه‌ای GitHub Pages نسخهٔ قدیمی را در کش جدید نگذارد
+  e.waitUntil(caches.open(CACHE)
+    .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -28,8 +31,10 @@ self.addEventListener('activate', e => {
 // اول شبکه (تا نسخهٔ جدید برسد)، اگر آفلاین بود از کش
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const sameOrigin = new URL(e.request.url).origin === self.location.origin;
   e.respondWith(
-    fetch(e.request)
+    // no-cache: همیشه با سرور چک کن (با ETag سبک است)، وگرنه تا ۱۰ دقیقه نسخهٔ قدیمی می‌ماند
+    (sameOrigin ? fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(e.request))
       .then(res => {
         if (res.ok || res.type === 'opaque') {
           const copy = res.clone();
