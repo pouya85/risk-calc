@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ماشین‌حساب ریسک</title>
+<meta name="description" content="محاسبهٔ لات، R:R و فاصله تا حد ضرر برای اکانت‌های FundedNext">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ریسک">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap">
+
+  <header class="top">
+    <h1>ماشین‌حساب ریسک</h1>
+    <div id="dayBanner" class="banner" hidden></div>
+  </header>
+
+  <!-- ورودی معامله -->
+  <section class="card">
+    <div class="row2">
+      <label>جفت‌ارز
+        <select id="pair">
+          <option>EURUSD</option>
+          <option>GBPUSD</option>
+          <option>AUDUSD</option>
+          <option>NZDUSD</option>
+          <option>USDJPY</option>
+          <option>USDCAD</option>
+          <option>USDCHF</option>
+        </select>
+      </label>
+      <label>اسپرد (پیپ)
+        <input id="spread" inputmode="decimal" placeholder="0.0" autocomplete="off">
+      </label>
+    </div>
+
+    <label>Entry
+      <input id="entry" class="price" inputmode="decimal" placeholder="1.08500" autocomplete="off">
+    </label>
+    <div class="row2">
+      <label>Stop Loss
+        <input id="sl" class="price" inputmode="decimal" placeholder="1.08470" autocomplete="off">
+      </label>
+      <label>Take Profit
+        <input id="tp" class="price" inputmode="decimal" placeholder="1.08560" autocomplete="off">
+      </label>
+    </div>
+    <button id="clearTrade" class="ghost" type="button">پاک کردن</button>
+  </section>
+
+  <!-- خلاصه -->
+  <section class="stats" id="stats">
+    <div class="stat"><span class="k">جهت</span><span class="v" id="sDir">—</span></div>
+    <div class="stat"><span class="k">SL</span><span class="v" id="sSL">—</span></div>
+    <div class="stat"><span class="k">TP</span><span class="v" id="sTP">—</span></div>
+    <div class="stat"><span class="k">R:R</span><span class="v" id="sRR">—</span></div>
+  </section>
+
+  <ul id="warnings" class="warnings"></ul>
+
+  <!-- نتیجه به تفکیک اکانت -->
+  <section id="results" class="results"></section>
+
+  <!-- وضعیت روز -->
+  <section class="card">
+    <h2>وضعیت امروز</h2>
+    <div class="row2">
+      <div class="field">
+        <span class="lbl">معاملات امروز</span>
+        <div class="stepper">
+          <button type="button" id="tradesMinus" aria-label="کم کردن">−</button>
+          <output id="tradesToday">0</output>
+          <button type="button" id="tradesPlus" aria-label="اضافه کردن">+</button>
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="stopHit">
+        <span>امروز استاپ خوردم</span>
+      </label>
+    </div>
+    <button id="newDay" class="ghost" type="button">شروع روز جدید (صفر کردن P&amp;L امروز)</button>
+  </section>
+
+  <!-- تنظیم اکانت‌ها -->
+  <details class="card" id="accountsBox">
+    <summary><h2>اکانت‌ها</h2><span class="hint">موجودی و P&amp;L امروز را اینجا به‌روز کن</span></summary>
+    <div id="accounts"></div>
+    <div class="actions">
+      <button id="addAcc" class="ghost" type="button">+ اکانت جدید</button>
+      <button id="resetAcc" class="ghost danger" type="button">بازگشت به پیش‌فرض</button>
+    </div>
+  </details>
+
+  <footer class="foot">
+    لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · Daily Loss و Max DD ثابت روی سایز اولیه
+  </footer>
+</main>
+
+<template id="accTpl">
+  <div class="acc">
+    <div class="accHead">
+      <label class="switch"><input type="checkbox" data-f="enabled"><span></span></label>
+      <input data-f="name" class="accName" autocomplete="off">
+      <button type="button" class="del" aria-label="حذف">✕</button>
+    </div>
+    <div class="grid3">
+      <label>سایز اولیه<input data-f="size" inputmode="decimal"></label>
+      <label>موجودی فعلی<input data-f="balance" inputmode="decimal"></label>
+      <label>P&amp;L امروز<input data-f="todayPnl" inputmode="decimal" placeholder="-250"></label>
+      <label>ریسک %<input data-f="riskPct" inputmode="decimal"></label>
+      <label>Daily Loss %<input data-f="dailyPct" inputmode="decimal"></label>
+      <label>Max DD %<input data-f="maxDdPct" inputmode="decimal"></label>
+    </div>
+  </div>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
