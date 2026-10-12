@@ -139,7 +139,7 @@ function renderSheet() {
   if (!tr) { closeSheet(); return; }
   const closed = tr.status === 'closed';
   const dis = closed ? 'disabled' : '';
-  const pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'];
+  const pairs = PAIRS;
   $('sheetTitle').textContent = closed ? 'معاملهٔ بسته' : 'معاملهٔ باز';
 
   let h = `

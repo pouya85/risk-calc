@@ -1,5 +1,5 @@
 // هر بار فایل‌ها عوض شدند، این نسخه را بالا ببر تا کش قدیمی پاک شود
-const CACHE = 'riskcalc-v7';
+const CACHE = 'riskcalc-v8';
 const SHELL = [
   './',
   'index.html',

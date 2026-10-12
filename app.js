@@ -54,11 +54,15 @@ function num(v) {
 
 const isDemoAccount = a => a.demo === true || /دمو|demo/i.test(a.name || '');
 
-const pipSize = pair => pair.endsWith('JPY') ? 0.01 : 0.0001;
+const PAIRS = ['EURUSD', 'GBPUSD', 'XAUUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'];
+const isGold = pair => pair === 'XAUUSD';
+
+// طلا: ۱ پیپ = 0.10 دلار حرکت قیمت، ۱ لات = ۱۰۰ اونس ← هر پیپ ۱۰ دلار در هر لات
+const pipSize = pair => isGold(pair) ? 0.1 : pair.endsWith('JPY') ? 0.01 : 0.0001;
 
 // ارزش هر پیپ برای ۱ لات استاندارد به دلار
 function pipValuePerLot(pair, price) {
-  if (pair.endsWith('USD')) return 10;
+  if (pair.endsWith('USD')) return 10; // شامل XAUUSD: 100oz × 0.10
   if (pair.startsWith('USD')) return 100000 * pipSize(pair) / price;
   return 10;
 }
@@ -97,12 +101,16 @@ function compute(inp = state) {
 
   if (out.rr !== undefined && out.rr < MIN_RR)
     out.warnings.push(['warn', `R:R کمتر از 1:${MIN_RR} است — ولی TP را برای عدد داخل مقاومت نکِش`]);
-  if (spread > 1.5 && out.slPips < 3)
+  const gold = isGold(pair);
+  if (!gold && spread > 1.5 && out.slPips < 3)
     out.warnings.push(['bad', `اسپرد ${fx(spread)} پیپ + SL زیر ۳ پیپ = خطرناک`]);
-  if (out.slPips < 1)
-    out.warnings.push(['warn', 'SL کمتر از ۱ پیپ — قیمت‌ها را دوباره چک کن']);
-  if (out.slPips > 150)
-    out.warnings.push(['warn', 'SL بیشتر از ۱۵۰ پیپ — قیمت‌ها را دوباره چک کن']);
+  if (gold && spread > 0 && spread >= out.slPips * 0.15)
+    out.warnings.push(['bad', `اسپرد ${fx(spread)} پیپ بیشتر از ۱۵٪ SL است = خطرناک`]);
+  const [minSl, maxSl] = gold ? [5, 1000] : [1, 150];
+  if (out.slPips < minSl)
+    out.warnings.push(['warn', `SL کمتر از ${minSl} پیپ — قیمت‌ها را دوباره چک کن`]);
+  if (out.slPips > maxSl)
+    out.warnings.push(['warn', `SL بیشتر از ${maxSl} پیپ — قیمت‌ها را دوباره چک کن`]);
 
   out.accounts = state.accounts.map((a, idx) => [a, idx]).filter(([a]) => a.enabled).map(([a, idx]) => {
     const size = num(a.size) || 0;
@@ -139,6 +147,7 @@ function compute(inp = state) {
 function render() {
   const r = compute();
   $('toJournal').hidden = !(r.valid && r.accounts.length);
+  $('goldNote').hidden = !isGold(state.pair);
 
   // بنر قوانین روز
   const banner = $('dayBanner');
