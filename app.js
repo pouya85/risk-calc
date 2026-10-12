@@ -67,6 +67,16 @@ function pipValuePerLot(pair, price) {
   return 10;
 }
 
+// کمیسیون رفت‌وبرگشت هر لات به دلار، از مشخصات نماد در FundedNext (MT5)
+// XAUUSD: 0.0016% ارزش قرارداد (100oz × قیمت) در هر deal، یعنی باز + بسته = ۲ بار
+function commissionPerLot(pair, price) {
+  if (isGold(pair)) return 2 * 0.000016 * 100 * price;
+  return 0; // جفت‌ارزها: هنوز مشخصات FundedNext را نداریم
+}
+
+// حداکثر حجم هر سفارش در FundedNext
+const MAX_VOLUME = { XAUUSD: 50 };
+
 const $ = id => document.getElementById(id);
 const usd = v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const fx = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : '—';
@@ -88,6 +98,7 @@ function compute(inp = state) {
   out.dir = sl < entry ? 'LONG' : 'SHORT';
   out.slPips = pips(entry - sl);
   out.pv = pipValuePerLot(pair, entry);
+  out.comm = commissionPerLot(pair, entry);
 
   if (tp > 0) {
     const rightSide = out.dir === 'LONG' ? tp > entry : tp < entry;
@@ -118,10 +129,11 @@ function compute(inp = state) {
     const todayPnl = num(a.todayPnl) || 0;
     const riskUsd = size * (num(a.riskPct) || 0) / 100;
 
-    const lotRaw = riskUsd / (out.slPips * out.pv);
+    // کمیسیون جزو ریسک است تا ضرر واقعی در SL از سقف ۱٪ رد نشود
+    const lotRaw = riskUsd / (out.slPips * out.pv + out.comm);
     const lot = Math.floor(lotRaw * 100 + 1e-9) / 100; // رو به پایین تا ریسک از سقف رد نشود
-    const realRisk = lot * out.slPips * out.pv;
-    const profit = out.tpPips ? lot * out.tpPips * out.pv : NaN;
+    const realRisk = lot * (out.slPips * out.pv + out.comm);
+    const profit = out.tpPips ? lot * (out.tpPips * out.pv - out.comm) : NaN;
 
     const dailyLeft = size * (num(a.dailyPct) || 0) / 100 + todayPnl;
     const ddLeft = balance - size * (1 - (num(a.maxDdPct) || 0) / 100);
@@ -140,7 +152,11 @@ function compute(inp = state) {
     if (r.dailyAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Daily Loss رد می‌شود`]);
     else if (r.ddAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Max Drawdown رد می‌شود`]);
     if (r.lot <= 0) out.warnings.push(['warn', `${n}: لات کمتر از 0.01 می‌شود`]);
+    const maxVol = MAX_VOLUME[pair];
+    if (maxVol && r.lot > maxVol) out.warnings.push(['warn', `${n}: لات بیشتر از حداکثر هر سفارش (${maxVol}) — در ${Math.ceil(r.lot / maxVol)} سفارش باز کن`]);
   }
+  if (out.comm > 0)
+    out.warnings.push(['info', `ریسک و سود شامل کمیسیون رفت‌وبرگشت است: ~$${out.comm.toFixed(2)} در هر لات`]);
   return out;
 }
 

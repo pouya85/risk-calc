@@ -199,6 +199,7 @@ button.danger { color: var(--bad); }
 .warnings li { border-radius: 10px; padding: 8px 12px; font-size: 14px; }
 .warnings li.warn { background: var(--warn-bg); color: var(--warn); }
 .warnings li.bad { background: var(--bad-bg); color: var(--bad); }
+.warnings li.info { background: var(--surface-2); color: var(--muted); font-size: 13px; }
 
 .banner {
   background: var(--bad-bg); color: var(--bad);

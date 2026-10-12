@@ -58,6 +58,7 @@ function applyCalc(tr) {
   tr.tpPips = r.tpPips ?? null;
   tr.rr = r.rr ?? null;
   tr.pv = r.pv;
+  tr.comm = r.comm;
   tr.accounts = r.accounts.map(a => ({ idx: a.idx, name: a.name, demo: a.demo, lot: a.lot, risk: round2(a.realRisk) }));
   return true;
 }
@@ -269,7 +270,7 @@ function closeCalc(tr, result, exitStr) {
     exit: { tp: tr.tp, sl: tr.sl, be: tr.entry }[result] || latin(exitStr),
     pips,
     r: round2(pips / tr.slPips),
-    accUsd: tr.accounts.map(a => round2(a.lot * pips * tr.pv)),
+    accUsd: tr.accounts.map(a => round2(a.lot * (pips * tr.pv - (tr.comm || 0)))),
   };
 }
 
