@@ -1,10 +1,12 @@
 name: Killzone push
 
+# زمان‌بندی GitHub (schedule) در عمل ۴ تا ۷ ساعت دیر اجرا می‌شد، پس حذف شد.
+# حالا cron-job.org سر ساعت (با تایم‌زون لندن/نیویورک) از طریق API این را صدا می‌زند:
+#   POST /repos/pouya85/risk-calc/actions/workflows/killzone-push.yml/dispatches
+#   {"ref":"main","inputs":{"mode":"london"}}   ← 06:53 Europe/London، دوشنبه تا جمعه
+#   {"ref":"main","inputs":{"mode":"ny"}}       ← 08:23 America/New_York، دوشنبه تا جمعه
+# اسکریپت خودش تا ۵ دقیقه قبل از شروع Killzone صبر می‌کند.
 on:
-  schedule:
-    # UTC. اسکریپت خودش تا ۵ دقیقه قبل از شروع صبر می‌کند (BST و GMT هر دو پوشش داده می‌شوند)
-    - cron: '47 4 * * 1-5'   # London 07:00 لندن = 06:00 یا 07:00 UTC
-    - cron: '17 11 * * 1-5'  # NY AM 08:30 نیویورک = 12:30 یا 13:30 UTC
   workflow_dispatch:
     inputs:
       mode:
@@ -12,12 +14,12 @@ on:
         default: 'test'
 
 concurrency:
-  group: killzone-${{ github.event.schedule || github.event.inputs.mode }}
+  group: killzone-${{ github.event.inputs.mode }}
 
 jobs:
   push:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +30,6 @@ jobs:
       - run: node send.mjs
         working-directory: push
         env:
-          MODE: ${{ github.event.inputs.mode || (github.event.schedule == '47 4 * * 1-5' && 'london' || 'ny') }}
+          MODE: ${{ github.event.inputs.mode }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           PUSH_SUBSCRIPTIONS: ${{ secrets.PUSH_SUBSCRIPTIONS }}
