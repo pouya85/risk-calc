@@ -123,6 +123,19 @@
     <label class="switch"><input type="checkbox" id="lockToggle"><span>فعال</span></label>
   </section>
 
+  <section class="card" id="syncCard">
+    <h2>همگام‌سازی با سرور</h2>
+    <p class="hint" id="syncInfo"></p>
+    <div id="syncOff">
+      <input id="syncCode" type="text" dir="ltr" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="کد همگام‌سازی را اینجا بچسبان">
+      <button id="syncConnect" class="primary" type="button" style="margin-top:8px">وصل شو</button>
+    </div>
+    <div id="syncOn" class="actions" hidden>
+      <button id="syncNow" class="ghost" type="button">همگام‌سازی الان</button>
+      <button id="syncOffBtn" class="ghost danger" type="button">خاموش کن</button>
+    </div>
+  </section>
+
   <footer class="foot">
     لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · Daily Loss و Max DD ثابت روی سایز اولیه
   </footer>
@@ -262,6 +275,7 @@
 <script src="app.js"></script>
 <script src="killzone.js"></script>
 <script src="journal.js"></script>
+<script src="sync.js"></script>
 <script src="lock.js"></script>
 </body>
 </html>

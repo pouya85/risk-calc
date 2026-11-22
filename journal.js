@@ -30,6 +30,7 @@ function jLoad() {
 }
 function jSave() {
   try { localStorage.setItem(J_KEY, JSON.stringify(journal)); } catch (_) {}
+  window.RCSync?.changed();
 }
 
 const round2 = v => Math.round(v * 100) / 100;
@@ -554,6 +555,7 @@ function renderBackupInfo() {
   let last = 0;
   try { last = +localStorage.getItem(BACKUP_KEY) || 0; } catch (_) {}
   const el = $('backupInfo');
+  if (window.RCSync?.on()) { el.textContent = 'همگام‌سازی روشن است: ژورنال روی سرور هم ذخیره می‌شود. خروجی فایل اختیاری است.'; el.className = 'hint'; return; }
   if (!journal.length) { el.textContent = 'اطلاعات فقط روی همین گوشی است. هر چند وقت یک بار خروجی بگیر.'; el.className = 'hint'; return; }
   const days = last ? Math.floor((Date.now() - last) / 864e5) : null;
   el.textContent = last === 0 ? '⚠️ هنوز پشتیبان نگرفته‌ای — اطلاعات فقط روی همین گوشی است.'

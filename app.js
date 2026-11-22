@@ -50,6 +50,7 @@ function migrateAccounts(s) {
 
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (_) {}
+  window.RCSync?.changed();
 }
 
 // ارقام فارسی/عربی و ممیز فارسی را به عدد لاتین تبدیل می‌کند
