@@ -2,13 +2,18 @@
 
 const STORE_KEY = 'riskcalc.v1';
 
+// از داشبورد FundedNext، ۲۲ نوامبر ۲۰۲۶ — 2-Step: ریسک 1%، DLL 5%، Max 10% | 1-Step: ریسک 0.5%، DLL 3%، Max 6%
+// (مخزن عمومی است: شمارهٔ لاگین اینجا نیاید؛ اسم را داخل اپ عوض کن)
 const DEFAULT_ACCOUNTS = [
-  { name: 'اکانت ۱', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'اکانت ۲', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'اکانت ۳', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'اکانت ۴', size: 50000,  balance: 50000,  todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: 'دمو',           size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: false, demo: true },
+  { name: '100K 2-Step #1', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: '100K 2-Step #2', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: '50K 2-Step',     size: 50000,  balance: 50000,    todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
+  { name: '50K 1-Step #1',  size: 50000,  balance: 49999.99, todayPnl: 0, riskPct: 0.5, dailyPct: 3, maxDdPct: 6,  enabled: true },
+  { name: '50K 1-Step #2',  size: 50000,  balance: 49999.15, todayPnl: 0, riskPct: 0.5, dailyPct: 3, maxDdPct: 6,  enabled: true },
+  { name: 'دمو',            size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: false, demo: true },
 ];
+// هر بار لیست پیش‌فرض اکانت‌ها عوض شد، این را بالا ببر تا اپِ نصب‌شده هم لیست جدید را بگیرد
+const ACCOUNTS_VERSION = 2;
 
 const MAX_TRADES_PER_DAY = 2;
 const MIN_RR = 2;
@@ -19,6 +24,7 @@ function defaults() {
   return {
     pair: 'EURUSD', spread: '', entry: '', sl: '', tp: '',
     tradesToday: 0, stopHit: false,
+    accountsVersion: ACCOUNTS_VERSION,
     accounts: structuredClone(DEFAULT_ACCOUNTS),
   };
 }
@@ -26,9 +32,20 @@ function defaults() {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return { ...defaults(), ...JSON.parse(raw) };
+    if (raw) return migrateAccounts({ ...defaults(), accountsVersion: 0, ...JSON.parse(raw) });
   } catch (_) { /* حالت private یا storage بسته */ }
   return defaults();
+}
+
+// لیست قدیمی اکانت‌ها را با لیست جدید عوض می‌کند؛ اکانت دمو (موجودی و روشن/خاموش) همان می‌ماند
+function migrateAccounts(s) {
+  if (s.accountsVersion === ACCOUNTS_VERSION) return s;
+  const old = Array.isArray(s.accounts) ? s.accounts : [];
+  const oldDemo = old.find(a => a.demo === true || /دمو|demo/i.test(a.name || ''));
+  s.accounts = structuredClone(DEFAULT_ACCOUNTS).map(a => (a.demo && oldDemo ? { ...oldDemo, demo: true } : a));
+  s.accountsVersion = ACCOUNTS_VERSION;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (_) {}
+  return s;
 }
 
 function save() {
