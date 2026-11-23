@@ -12,7 +12,7 @@ const CHECKS = [
   'Displacement قوی',
   'FVG یا OB مشخص',
   'SL پشت سوییپ واقعی (از OHLCV)',
-  'R:R حداقل 1:2',
+  'R:R خالص حداقل 1:2 (بعد از کمیسیون)',
 ];
 const MIN_SCORE = 5;
 const SL_REASONS = ['SL', 'Entry', 'Bias', 'Timing', 'سِتاپ نامعتبر بود'];
@@ -25,9 +25,25 @@ let openId = null;
 let draftClose = null; // { result, exit, preview, accUsd, apply }
 
 function jLoad() {
-  try { const r = localStorage.getItem(J_KEY); if (r) return JSON.parse(r); } catch (_) {}
+  try { const r = localStorage.getItem(J_KEY); if (r) return netRMigrate(JSON.parse(r)); } catch (_) {}
   return [];
 }
+
+// تا ۲۳ نوامبر ۲۰۲۶ R هر معامله بدون کمیسیون بود (پیپ ÷ پیپ SL). معاملات بستهٔ قدیمی را به R خالص ببر.
+// فقط function declaration و توابع app.js (num، commissionPerLot): jLoad قبل از const‌های پایین اجرا می‌شود
+function netRMigrate(list) {
+  for (const t of Array.isArray(list) ? list : []) {
+    if (t.rNet || t.status !== 'closed' || !(t.slPips > 0) || !Number.isFinite(t.pips)) continue;
+    const pv = t.pv || 10;
+    const comm = Number.isFinite(t.comm) ? t.comm : commissionPerLot(t.pair, num(t.entry));
+    t.r = Math.round((t.pips * pv - comm) / (t.slPips * pv + comm) * 100) / 100;
+    t.rNet = true;
+  }
+  return list;
+}
+
+// برد/باخت از روی جهت قیمت (پیپ)، نه R خالص: خروج سربه‌سر فقط کمیسیون می‌خورد و «استاپ» حساب نمی‌شود
+const outcome = t => { const p = Number.isFinite(t.pips) ? t.pips : t.r; return p > 0 ? 1 : p < 0 ? -1 : 0; };
 function jSave() {
   try { localStorage.setItem(J_KEY, JSON.stringify(journal)); } catch (_) {}
   window.RCSync?.changed();
@@ -60,6 +76,7 @@ function applyCalc(tr) {
   tr.rr = r.rr ?? null;
   tr.pv = r.pv;
   tr.comm = r.comm;
+  tr.netRr = r.netRr ?? null;
   tr.accounts = r.accounts.map(a => ({ idx: a.idx, name: a.name, demo: a.demo, lot: a.lot, risk: round2(a.realRisk) }));
   return true;
 }
@@ -75,7 +92,7 @@ function newTrade(inp, t = Date.now()) {
   };
   applyCalc(tr);
   tr.checks[1] = tr.kz !== OUT_KZ;
-  tr.checks[6] = (tr.rr || 0) >= 2;
+  tr.checks[6] = (tr.netRr || 0) >= MIN_RR;
   tr.demo = tr.accounts.length > 0 && tr.accounts.every(a => a.demo);
   return tr;
 }
@@ -202,7 +219,7 @@ function renderSheet() {
 
   <section class="card">
     <h2>بررسی بعد از معامله</h2>`;
-    if (tr.r < -0.001) {
+    if (outcome(tr) < 0) {
       h += `<span class="lbl">اشکال کجا بود؟</span>
       <div class="chips">${SL_REASONS.map(x => `<button type="button" class="chip ${tr.review.reasons.includes(x) ? 'on' : ''}" data-act="reason" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`;
     }
@@ -245,9 +262,9 @@ function renderDerived() {
     <div class="kpis">
       <div><span class="k">جهت</span><span class="v ${tr.dir === 'LONG' ? 'long' : 'short'}">${tr.dir === 'LONG' ? 'Buy ▲' : 'Sell ▼'}</span></div>
       <div><span class="k">SL / TP</span><span class="v">${fx(tr.slPips)} / ${tr.tpPips ? fx(tr.tpPips) : '—'}</span></div>
-      <div><span class="k">R:R</span><span class="v ${tr.rr >= 2 ? 'good' : tr.rr ? 'bad' : ''}">${tr.rr ? '1:' + tr.rr.toFixed(2) : '—'}</span></div>
+      <div><span class="k">R:R خالص</span><span class="v ${tr.netRr >= MIN_RR ? 'good' : tr.netRr ? 'bad' : ''}">${tr.netRr ? '1:' + tr.netRr.toFixed(2) : '—'}</span></div>
     </div>
-    <p class="hint">${esc(tr.kz)} · ${tr.accounts.length ? tr.accounts.map(a => `${esc(a.name)} ${a.lot.toFixed(2)}`).join(' · ') : 'اکانت فعالی نیست'}</p>`;
+    <p class="hint">${tr.rr ? `R:R چارت 1:${tr.rr.toFixed(2)} · ` : ''}${esc(tr.kz)} ·${tr.accounts.length ? tr.accounts.map(a => `${esc(a.name)} ${a.lot.toFixed(2)}`).join(' · ') : 'اکانت فعالی نیست'}</p>`;
 }
 
 function renderScore() {
@@ -270,7 +287,8 @@ function closeCalc(tr, result, exitStr) {
     // رشتهٔ اصلی را نگه دار تا صفرهای آخر (1.16240) نیفتند
     exit: { tp: tr.tp, sl: tr.sl, be: tr.entry }[result] || latin(exitStr),
     pips,
-    r: round2(pips / tr.slPips),
+    // R خالص: کمیسیون هم از سود کم می‌شود هم جزو ریسک است (SL کامل = −1R، سربه‌سر ≈ −کمیسیون)
+    r: round2((pips * tr.pv - (tr.comm || 0)) / (tr.slPips * tr.pv + (tr.comm || 0))),
     accUsd: tr.accounts.map(a => round2(a.lot * (pips * tr.pv - (tr.comm || 0)))),
   };
 }
@@ -295,7 +313,7 @@ function renderClosePreview() {
     ${tr.accounts.length ? `<span class="lbl">سود/زیان هر اکانت (اگر کمیسیون یا اسلیپیج داشتی اصلاح کن)</span>
     <div class="accEdit">${tr.accounts.map((a, i) => `<label>${esc(a.name)}<input data-f="accUsd" data-i="${i}" inputmode="decimal" value="${p.accUsd[i]}"></label>`).join('')}</div>
     <label class="switch"><input type="checkbox" data-f="apply" checked><span>به P&amp;L امروز و موجودی اکانت‌ها اضافه شود</span></label>` : ''}
-    <p class="hint">با ثبت: شمارندهٔ معاملات امروز +۱${p.r < 0 ? ' و «استاپ خوردم» روشن می‌شود (روز تمام است)' : ''}.</p>
+    <p class="hint">R خالص است (بعد از کمیسیون). با ثبت: شمارندهٔ معاملات امروز +۱${p.pips < 0 ? ' و «استاپ خوردم» روشن می‌شود (روز تمام است)' : ''}.</p>
     <button type="button" class="primary big" data-act="confirmClose">ثبت نتیجه و بستن معامله</button>`;
   draftClose.apply = tr.accounts.length > 0;
 }
@@ -326,13 +344,14 @@ function confirmClose() {
   tr.exit = p.exit;
   tr.pips = p.pips;
   tr.r = p.r;
+  tr.rNet = true;
   tr.accUsd = tr.accounts.map((_, i) => round2(num(draftClose.accUsd[i]) || 0));
   tr.usd = round2(tr.accUsd.reduce((s, v) => s + v, 0));
   tr.closedAt = Date.now();
   tr.applied = !!draftClose.apply;
   if (tr.applied) addPnl(tr, 1);
   state.tradesToday = Math.min(9, state.tradesToday + 1);
-  if (tr.r < 0) state.stopHit = true;
+  if (outcome(tr) < 0) state.stopHit = true;
   draftClose = null;
   save(); renderAccounts(); render();
   jSave();
@@ -345,7 +364,7 @@ function reopen() {
   if (tr.applied) addPnl(tr, -1);
   state.tradesToday = Math.max(0, state.tradesToday - 1);
   tr.status = 'open';
-  for (const k of ['result', 'exit', 'pips', 'r', 'accUsd', 'usd', 'closedAt', 'applied']) delete tr[k];
+  for (const k of ['result', 'exit', 'pips', 'r', 'rNet', 'accUsd', 'usd', 'closedAt', 'applied']) delete tr[k];
   save(); renderAccounts(); render();
   jSave();
   renderSheet();
@@ -447,17 +466,25 @@ function filteredTrades() {
 }
 
 function metrics(list) {
-  const wins = list.filter(t => t.r > 0.001), losses = list.filter(t => t.r < -0.001);
-  const pos = wins.reduce((s, t) => s + t.r, 0), neg = losses.reduce((s, t) => s + t.r, 0);
-  const totalR = list.reduce((s, t) => s + t.r, 0);
+  // برد/باخت با جهت قیمت؛ همهٔ R ها خالص‌اند (سربه‌سر ≈ −کمیسیون و در جمع R و PF می‌آید)
+  const wins = list.filter(t => outcome(t) > 0), losses = list.filter(t => outcome(t) < 0);
+  const sumR = l => l.reduce((s, t) => s + t.r, 0);
+  const pos = sumR(list.filter(t => t.r > 0)), neg = sumR(list.filter(t => t.r < 0));
+  const totalR = sumR(list);
   let streakW = 0, streakL = 0, cw = 0, cl = 0;
   for (const t of list) {
-    if (t.r > 0.001) { cw++; cl = 0; } else if (t.r < -0.001) { cl++; cw = 0; } else { cw = 0; cl = 0; }
+    const o = outcome(t);
+    if (o > 0) { cw++; cl = 0; } else if (o < 0) { cl++; cw = 0; } else { cw = 0; cl = 0; }
     streakW = Math.max(streakW, cw); streakL = Math.max(streakL, cl);
   }
+  const avgWinR = wins.length ? sumR(wins) / wins.length : null;
+  const avgLossR = losses.length ? sumR(losses) / losses.length : null;
   return {
     n: list.length, wins: wins.length, losses: losses.length,
     winRate: wins.length + losses.length ? wins.length / (wins.length + losses.length) * 100 : null,
+    avgWinR, avgLossR,
+    // وین‌ریتی که با همین میانگین برد و باخت خالص، جمع R را صفر می‌کند
+    beWinRate: avgWinR > 0 && avgLossR < 0 ? -avgLossR / (avgWinR - avgLossR) * 100 : null,
     totalR, avgR: list.length ? totalR / list.length : null,
     pf: neg ? pos / -neg : null,
     usd: list.reduce((s, t) => s + (t.usd || 0), 0),
@@ -497,15 +524,20 @@ function renderStats() {
   <section class="card">
     <div class="kpis k3">
       ${tile('معاملات', m.n)}
-      ${tile('Win rate', m.winRate === null ? '—' : m.winRate.toFixed(0) + '%', m.winRate >= 50 ? 'good' : 'bad')}
+      ${tile('Win rate', m.winRate === null ? '—' : m.winRate.toFixed(0) + '%',
+        m.winRate === null || m.beWinRate === null ? '' : m.winRate > m.beWinRate ? 'good' : 'bad')}
+      ${tile('وین‌ریت سربه‌سر', m.beWinRate === null ? '—' : m.beWinRate.toFixed(0) + '%')}
       ${tile('جمع R', signed(m.totalR, 1), resClass(m.totalR))}
       ${tile('میانگین R', signed(m.avgR), resClass(m.avgR))}
+      ${tile('میانگین برد', m.avgWinR === null ? '—' : signed(m.avgWinR) + 'R', 'good')}
+      ${tile('میانگین باخت', m.avgLossR === null ? '—' : signed(m.avgLossR) + 'R', 'bad')}
       ${tile('Profit Factor', m.pf === null ? '—' : m.pf.toFixed(2), m.pf >= 1 ? 'good' : 'bad')}
       ${tile('دلار', usdSigned(m.usd), resClass(m.usd))}
       ${tile('برد / باخت', `${m.wins} / ${m.losses}`)}
       ${tile('بیشترین برد پیاپی', m.streakW)}
       ${tile('بیشترین باخت پیاپی', m.streakL)}
     </div>
+    <p class="hint">همهٔ R ها خالص‌اند (بعد از کمیسیون). «وین‌ریت سربه‌سر» وین‌ریتی است که با همین میانگین برد و باخت، جمع R را صفر می‌کند — وین‌ریت باید بالاتر از آن باشد. با کمتر از ~۱۰۰ معامله این اعداد هنوز خطای بزرگی دارند.</p>
     ${open ? `<p class="hint">${open} معاملهٔ باز در آمار حساب نشده.</p>` : ''}
   </section>`;
 

@@ -186,13 +186,18 @@ function compute(inp = state) {
     if (rightSide) {
       out.tpPips = pips(tp - entry);
       out.rr = out.tpPips / out.slPips;
+      // R:R خالص = سود بعد از کمیسیون ÷ ریسک با کمیسیون (معیار حداقل R:R از ۲۳ نوامبر ۲۰۲۶)
+      out.netRr = (out.tpPips * out.pv - out.comm) / (out.slPips * out.pv + out.comm);
     } else {
       out.warnings.push(['bad', 'TP در سمت اشتباهِ Entry است — جهت معامله را چک کن']);
     }
   }
 
-  if (out.rr !== undefined && out.rr < MIN_RR)
-    out.warnings.push(['warn', `R:R کمتر از 1:${MIN_RR} است — ولی TP را برای عدد داخل مقاومت نکِش`]);
+  if (out.netRr !== undefined && out.netRr < MIN_RR) {
+    // TP لازم برای R:R خالص = MIN_RR  ←  tp×pv − comm = MIN_RR × (sl×pv + comm)
+    const tpNeed = Math.ceil((MIN_RR * (out.slPips * out.pv + out.comm) + out.comm) / out.pv * 10) / 10;
+    out.warnings.push(['warn', `R:R خالص 1:${out.netRr.toFixed(2)} کمتر از 1:${MIN_RR} است — برای ${MIN_RR}R خالص TP حداقل ${fx(tpNeed)} پیپ لازم است (چارت 1:${fx(tpNeed / out.slPips, 2)}). ولی TP را برای عدد داخل مقاومت نکِش`]);
+  }
   const gold = isGold(pair);
   if (!gold && spread > 1.5 && out.slPips < 3)
     out.warnings.push(['bad', `اسپرد ${fx(spread)} پیپ + SL زیر ۳ پیپ = خطرناک`]);
@@ -203,8 +208,6 @@ function compute(inp = state) {
     out.warnings.push(['warn', `SL کمتر از ${minSl} پیپ — قیمت‌ها را دوباره چک کن`]);
   if (out.slPips > maxSl)
     out.warnings.push(['warn', `SL بیشتر از ${maxSl} پیپ — قیمت‌ها را دوباره چک کن`]);
-
-  out.netRr = out.tpPips ? (out.tpPips * out.pv - out.comm) / (out.slPips * out.pv + out.comm) : undefined;
 
   out.accounts = state.accounts.map((a, idx) => [a, idx]).filter(([a]) => a.enabled).map(([a, idx]) => {
     const size = num(a.size) || 0;
@@ -244,7 +247,7 @@ function compute(inp = state) {
   }
   if (out.comm > 0) {
     out.warnings.push(['info', `ریسک و سود شامل کمیسیون رفت‌وبرگشت است: ~$${out.comm.toFixed(2)} در هر لات`
-      + (out.netRr !== undefined ? ` · R:R خالص بعد از کمیسیون: 1:${out.netRr.toFixed(2)}` : '')]);
+      + (out.rr !== undefined ? ` · R:R چارت (بدون کمیسیون): 1:${out.rr.toFixed(2)}` : '')]);
   }
   return out;
 }
@@ -275,8 +278,8 @@ function render() {
   $('sSL').textContent = r.valid ? fx(r.slPips) : '—';
   $('sTP').textContent = r.tpPips ? fx(r.tpPips) : '—';
   const rr = $('sRR');
-  rr.textContent = r.rr !== undefined ? '1:' + fx(r.rr, 2) : '—';
-  rr.className = 'v ' + (r.rr === undefined ? '' : r.rr >= MIN_RR ? 'good' : 'bad');
+  rr.textContent = r.netRr !== undefined ? '1:' + fx(r.netRr, 2) : '—';
+  rr.className = 'v ' + (r.netRr === undefined ? '' : r.netRr >= MIN_RR ? 'good' : 'bad');
 
   // هشدارها
   $('warnings').innerHTML = r.warnings.map(([cls, t]) => `<li class="${cls}">${esc(t)}</li>`).join('');
