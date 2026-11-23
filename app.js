@@ -2,15 +2,16 @@
 
 const STORE_KEY = 'riskcalc.v1';
 
-// از داشبورد FundedNext، ۲۲ نوامبر ۲۰۲۶ — 2-Step: ریسک 1%، DLL 5%، Max 10% | 1-Step: ریسک 0.5%، DLL 3%، Max 6%
+// از داشبورد FundedNext، ۲۲ نوامبر ۲۰۲۶ — 2-Step: DLL 5%، Max 10%، هدف 8% (فاز ۲: 5%) | 1-Step: DLL 3%، Max 6%، هدف 10%
+// ریسک از ۲۳ نوامبر با پلکان (ladder) است؛ riskPct فقط برای حالت «ثابت» (ladder: 'off')
 // (مخزن عمومی است: شمارهٔ لاگین اینجا نیاید؛ اسم را داخل اپ عوض کن)
 const DEFAULT_ACCOUNTS = [
-  { name: '100K 2-Step #1', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: '100K 2-Step #2', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: '50K 2-Step',     size: 50000,  balance: 50000,    todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: true },
-  { name: '50K 1-Step #1',  size: 50000,  balance: 49999.99, todayPnl: 0, riskPct: 0.5, dailyPct: 3, maxDdPct: 6,  enabled: true },
-  { name: '50K 1-Step #2',  size: 50000,  balance: 49999.15, todayPnl: 0, riskPct: 0.5, dailyPct: 3, maxDdPct: 6,  enabled: true },
-  { name: 'دمو',            size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,   dailyPct: 5, maxDdPct: 10, enabled: false, demo: true },
+  { name: '100K 2-Step #1', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 0.75, dailyPct: 5, maxDdPct: 10, ladder: '2step', targetPct: 8,  enabled: true },
+  { name: '100K 2-Step #2', size: 100000, balance: 100000,   todayPnl: 0, riskPct: 0.75, dailyPct: 5, maxDdPct: 10, ladder: '2step', targetPct: 8,  enabled: true },
+  { name: '50K 2-Step',     size: 50000,  balance: 50000,    todayPnl: 0, riskPct: 0.75, dailyPct: 5, maxDdPct: 10, ladder: '2step', targetPct: 8,  enabled: true },
+  { name: '50K 1-Step #1',  size: 50000,  balance: 49999.99, todayPnl: 0, riskPct: 0.5,  dailyPct: 3, maxDdPct: 6,  ladder: '1step', targetPct: 10, enabled: true },
+  { name: '50K 1-Step #2',  size: 50000,  balance: 49999.15, todayPnl: 0, riskPct: 0.5,  dailyPct: 3, maxDdPct: 6,  ladder: '1step', targetPct: 10, enabled: true },
+  { name: 'دمو',            size: 100000, balance: 100000,   todayPnl: 0, riskPct: 1,    dailyPct: 5, maxDdPct: 10, ladder: 'off',   targetPct: '', enabled: false, demo: true },
 ];
 // هر بار لیست پیش‌فرض اکانت‌ها عوض شد، این را بالا ببر تا اپِ نصب‌شده هم لیست جدید را بگیرد
 const ACCOUNTS_VERSION = 2;
@@ -32,9 +33,22 @@ function defaults() {
 function load() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return migrateAccounts({ ...defaults(), accountsVersion: 0, ...JSON.parse(raw) });
+    if (raw) return addLadderFields(migrateAccounts({ ...defaults(), accountsVersion: 0, ...JSON.parse(raw) }));
   } catch (_) { /* حالت private یا storage بسته */ }
   return defaults();
+}
+
+// اکانت‌های ذخیره‌شده قبل از پلکان (۲۳ نوامبر ۲۰۲۶) فیلد ladder ندارند. لیست و موجودی‌ها را دست نزن،
+// فقط نوع پلکان را از حدهای خود اکانت حدس بزن. (function declaration است چون load() قبل از const‌های پایین اجرا می‌شود)
+function addLadderFields(s) {
+  for (const a of Array.isArray(s.accounts) ? s.accounts : []) {
+    if (a.ladder !== undefined) continue;
+    const demo = a.demo === true || /دمو|demo/i.test(a.name || '');
+    const d = num(a.dailyPct), m = num(a.maxDdPct);
+    a.ladder = demo ? 'off' : d === 3 && m === 6 ? '1step' : d === 5 && m === 10 ? '2step' : 'off';
+    a.targetPct = a.ladder === '1step' ? 10 : a.ladder === '2step' ? 8 : '';
+  }
+  return s;
 }
 
 // لیست قدیمی اکانت‌ها را با لیست جدید عوض می‌کند؛ اکانت دمو (موجودی و روشن/خاموش) همان می‌ماند
@@ -96,6 +110,54 @@ function commissionPerLot(pair, price) {
 // حداکثر حجم هر سفارش در FundedNext
 const maxVolume = pair => isGold(pair) ? 50 : 40;
 
+// ---------- پلکان ریسک (CLAUDE.md، ۲۳ نوامبر ۲۰۲۶) ----------
+// پله از سود/افت بستهٔ فاز = (موجودی − سایز اولیه) ÷ سایز. پلهٔ افت بر پلهٔ سود مقدم است.
+const LADDERS = {
+  '2step': { base: 0.75, up: [[3, 1]],              down: [[-2, 0.5], [-5, 0.33]] },
+  '1step': { base: 0.5,  up: [[2, 0.75], [4, 1]],   down: [[-2, 0.33]] },
+};
+const LADDER_NAMES = { '2step': '⁦2-Step⁩', '1step': '⁦1-Step⁩' }; // بدون LRI در متن RTL «Step-2» می‌شد
+const LADDER_MIN = 0.25;      // کف ریسک در خط پایان
+const LADDER_CUSHION = 0.02;  // تا گرد شدن لات به پایین، برد آخر را کمی زیر هدف نگذارد
+const ASSUMED_NET_RR = 2;     // وقتی TP وارد نشده
+
+// LRI…PDI (نه FSI): رشتهٔ بدون حرف قوی مثل «+3%» داخل FSI در متن RTL به «%3+» برمی‌گشت
+const ltr = s => `⁦${s}⁩`;
+const pctTxt = v => ltr(`${v > 0 ? '+' : ''}${+v.toFixed(2)}%`);
+
+// netRr: R:R خالص همین معامله (برای قانون خط پایان)؛ بدون TP فرض ۲R
+function ladderStep(a, netRr) {
+  const L = LADDERS[a.ladder];
+  if (!L) return null;
+  const size = num(a.size) || 0;
+  const balance = Number.isFinite(num(a.balance)) ? num(a.balance) : size;
+  const pnl = size ? (balance - size) / size * 100 : 0;
+  let pct = L.base, label = 'شروع';
+  for (const [th, r] of L.up) if (pnl >= th) { pct = r; label = `سود ≥ ${pctTxt(th)}`; }
+  for (const [th, r] of L.down) if (pnl <= th) { pct = r; label = `افت ≤ ${pctTxt(th)}`; }
+  const target = num(a.targetPct);
+  let done = false, trimmed = false;
+  if (target > 0) {
+    const need = target - pnl;
+    const rr = netRr > 0 ? netRr : ASSUMED_NET_RR;
+    if (need <= 0) {
+      done = true; label = 'هدف رسیده ✓';
+    } else if (need < pct * rr) {
+      pct = Math.max(Math.min(need / rr + LADDER_CUSHION, pct), LADDER_MIN);
+      trimmed = true; label += ' · خط پایان';
+    }
+  }
+  return { pct, pnl, label, done, trimmed, target };
+}
+
+function stepText(a) {
+  const s = ladderStep(a);
+  if (!s) return `ریسک ثابت ${pctTxt(num(a.riskPct) || 0).replace('+', '')}`;
+  return `پلکان ${LADDER_NAMES[a.ladder]} · سود فاز ${pctTxt(s.pnl)}`
+    + (s.target > 0 ? ` از ${pctTxt(s.target).replace('+', '')}` : '')
+    + ` · پله: ${s.label} · ریسک ${pctTxt(s.pct).replace('+', '')}`;
+}
+
 const $ = id => document.getElementById(id);
 const usd = v => (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const fx = (v, d = 1) => Number.isFinite(v) ? v.toFixed(d) : '—';
@@ -142,15 +204,20 @@ function compute(inp = state) {
   if (out.slPips > maxSl)
     out.warnings.push(['warn', `SL بیشتر از ${maxSl} پیپ — قیمت‌ها را دوباره چک کن`]);
 
+  out.netRr = out.tpPips ? (out.tpPips * out.pv - out.comm) / (out.slPips * out.pv + out.comm) : undefined;
+
   out.accounts = state.accounts.map((a, idx) => [a, idx]).filter(([a]) => a.enabled).map(([a, idx]) => {
     const size = num(a.size) || 0;
     const balance = Number.isFinite(num(a.balance)) ? num(a.balance) : size;
     const todayPnl = num(a.todayPnl) || 0;
-    const riskUsd = size * (num(a.riskPct) || 0) / 100;
+    const step = ladderStep(a, out.netRr);
+    const riskPct = step ? step.pct : (num(a.riskPct) || 0);
+    const riskUsd = size * riskPct / 100;
 
     // کمیسیون جزو ریسک است تا ضرر واقعی در SL از سقف ۱٪ رد نشود
     const lotRaw = riskUsd / (out.slPips * out.pv + out.comm);
-    const lot = Math.floor(lotRaw * 100 + 1e-9) / 100; // رو به پایین تا ریسک از سقف رد نشود
+    // رو به پایین تا ریسک از سقف رد نشود · هدف رسیده = فقط 0.01 برای پر کردن حداقل روزها
+    const lot = step?.done ? 0.01 : Math.floor(lotRaw * 100 + 1e-9) / 100;
     const realRisk = lot * (out.slPips * out.pv + out.comm);
     const profit = out.tpPips ? lot * (out.tpPips * out.pv - out.comm) : NaN;
 
@@ -158,7 +225,7 @@ function compute(inp = state) {
     const ddLeft = balance - size * (1 - (num(a.maxDdPct) || 0) / 100);
 
     return {
-      idx, name: a.name, demo: isDemoAccount(a), size, riskUsd, lot, realRisk, profit,
+      idx, name: a.name, demo: isDemoAccount(a), size, riskPct, step, riskUsd, lot, realRisk, profit,
       profitPct: profit / size * 100,
       dailyLeft, dailyAfter: dailyLeft - realRisk,
       ddLeft, ddAfter: ddLeft - realRisk,
@@ -170,12 +237,12 @@ function compute(inp = state) {
     const n = `⁨${r.name}⁩`;
     if (r.dailyAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Daily Loss رد می‌شود`]);
     else if (r.ddAfter < 0) out.warnings.push(['bad', `${n}: استاپ این معامله از Max Drawdown رد می‌شود`]);
-    if (r.lot <= 0) out.warnings.push(['warn', `${n}: لات کمتر از 0.01 می‌شود`]);
+    if (r.step?.done) out.warnings.push(['info', `${n}: هدف رسیده — اگر روز حداقل مانده، فقط 0.01 لات باز کن`]);
+    else if (r.lot <= 0) out.warnings.push(['warn', `${n}: لات کمتر از 0.01 می‌شود`]);
     const maxVol = maxVolume(pair);
     if (r.lot > maxVol) out.warnings.push(['warn', `${n}: لات بیشتر از حداکثر هر سفارش (${maxVol}) — در ${Math.ceil(r.lot / maxVol)} سفارش باز کن`]);
   }
   if (out.comm > 0) {
-    out.netRr = out.tpPips ? (out.tpPips * out.pv - out.comm) / (out.slPips * out.pv + out.comm) : undefined;
     out.warnings.push(['info', `ریسک و سود شامل کمیسیون رفت‌وبرگشت است: ~$${out.comm.toFixed(2)} در هر لات`
       + (out.netRr !== undefined ? ` · R:R خالص بعد از کمیسیون: 1:${out.netRr.toFixed(2)}` : '')]);
   }
@@ -230,6 +297,10 @@ function render() {
         <span class="name">${esc(a.name)}</span>
         <span class="lot">${a.lot.toFixed(2)} <small>lot</small></span>
       </div>
+      <div class="step">${a.step
+        ? `پله: ${a.step.label} · سود فاز ${pctTxt(a.step.pnl)} · `
+          + (a.step.done ? `فقط ${ltr('0.01')} لات` : `ریسک ${pctTxt(a.riskPct).replace('+', '')}`)
+        : `ریسک ثابت ${pctTxt(a.riskPct).replace('+', '')}`}</div>
       <div class="kv">
         <div><span class="k">ریسک</span><span class="n bad">${usd(a.realRisk)}</span></div>
         <div><span class="k">سود اگر TP</span><span class="n good">${Number.isFinite(a.profit) ? usd(a.profit) : '—'}</span></div>
@@ -252,15 +323,18 @@ function renderAccounts() {
   wrap.innerHTML = '';
   state.accounts.forEach((acc, i) => {
     const node = tpl.content.firstElementChild.cloneNode(true);
+    const stepEl = node.querySelector('.accStep');
+    const updStep = () => { stepEl.textContent = stepText(acc); };
     node.querySelectorAll('[data-f]').forEach(inp => {
       const f = inp.dataset.f;
       if (inp.type === 'checkbox') inp.checked = !!acc[f];
       else inp.value = acc[f] ?? '';
-      inp.addEventListener(inp.type === 'checkbox' ? 'change' : 'input', () => {
+      inp.addEventListener(inp.type === 'checkbox' || inp.tagName === 'SELECT' ? 'change' : 'input', () => {
         acc[f] = inp.type === 'checkbox' ? inp.checked : inp.value;
-        save(); render();
+        save(); render(); updStep();
       });
     });
+    updStep();
     node.querySelector('.del').addEventListener('click', () => {
       if (!confirm(`«${acc.name}» حذف شود؟`)) return;
       state.accounts.splice(i, 1);
@@ -313,7 +387,7 @@ $('newDay').addEventListener('click', () => {
 });
 
 $('addAcc').addEventListener('click', () => {
-  state.accounts.push({ name: 'اکانت جدید', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, enabled: true });
+  state.accounts.push({ name: 'اکانت جدید', size: 100000, balance: 100000, todayPnl: 0, riskPct: 1, dailyPct: 5, maxDdPct: 10, ladder: 'off', targetPct: '', enabled: true });
   save(); renderAccounts(); render();
 });
 

@@ -219,6 +219,9 @@ button.danger { color: var(--bad); }
 .resHead .name { font-weight: 600; }
 .lot { font-size: 26px; font-weight: 800; direction: ltr; font-variant-numeric: tabular-nums; }
 .lot small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.res .step { font-size: 12px; color: var(--muted); margin: -4px 0 8px; }
+.grid3 select { font-size: 16px; padding: 8px; }
+.acc .accStep { margin: 8px 0 0; }
 .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 14px; }
 .kv div { display: flex; justify-content: space-between; gap: 6px; }
 .kv .k { color: var(--muted); }

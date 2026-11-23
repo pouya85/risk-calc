@@ -110,6 +110,7 @@
   <!-- تنظیم اکانت‌ها -->
   <details class="card" id="accountsBox">
     <summary><h2>اکانت‌ها</h2><span class="hint">موجودی و P&amp;L امروز را اینجا به‌روز کن</span></summary>
+    <p class="hint">پلکان ریسک: پله از «موجودی فعلی» نسبت به «سایز اولیه» حساب می‌شود و زیر هر اکانت نوشته شده. بعد از هر معامله موجودی را به‌روز کن. وقتی فاز ۱ پاس شد، موجودی را به سایز و هدف را ۵ برگردان.</p>
     <div id="accounts"></div>
     <div class="actions">
       <button id="addAcc" class="ghost" type="button">+ اکانت جدید</button>
@@ -137,7 +138,7 @@
   </section>
 
   <footer class="foot">
-    لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · Daily Loss و Max DD ثابت روی سایز اولیه
+    لات به پایین گرد می‌شود (0.01) تا ریسک از سقف بیشتر نشود · ریسک با پلکان (حداکثر ⁦1%⁩) · نزدیک هدف فقط به اندازهٔ باقی‌مانده · Daily Loss و Max DD ثابت روی سایز اولیه
   </footer>
 </div>
 
@@ -265,10 +266,19 @@
       <label>سایز اولیه<input data-f="size" inputmode="decimal"></label>
       <label>موجودی فعلی<input data-f="balance" inputmode="decimal"></label>
       <label>P&amp;L امروز<input data-f="todayPnl" inputmode="decimal" placeholder="-250"></label>
-      <label>ریسک ٪<input data-f="riskPct" inputmode="decimal"></label>
       <label>ضرر روزانه ٪<input data-f="dailyPct" inputmode="decimal"></label>
       <label>حداکثر افت ٪<input data-f="maxDdPct" inputmode="decimal"></label>
+      <label>هدف فاز ٪<input data-f="targetPct" inputmode="decimal" placeholder="8"></label>
+      <label>پلکان ریسک
+        <select data-f="ladder">
+          <option value="2step">2-Step</option>
+          <option value="1step">1-Step</option>
+          <option value="off">ثابت</option>
+        </select>
+      </label>
+      <label>ریسک ٪ (ثابت)<input data-f="riskPct" inputmode="decimal"></label>
     </div>
+    <p class="hint accStep"></p>
   </div>
 </template>
 
